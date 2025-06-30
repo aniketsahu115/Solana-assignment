@@ -1,14 +1,11 @@
-use axum::{Json, response::IntoResponse};
-use serde::Deserialize;
-use crate::types::{SuccessResponse, ErrorResponse};
-use ed25519_dalek::{Keypair, Signer, SECRET_KEY_LENGTH};
+use axum::{response::IntoResponse, Json};
+use base64::{engine::general_purpose, Engine as _};
 use bs58;
-use base64;
+use ed25519_dalek::{Keypair, PublicKey, Signature, Signer, Verifier};
+use serde::Deserialize;
 use serde_json::json;
-use ed25519_dalek::Verifier;
-use base64::engine::general_purpose;
-use base64::Engine;
 
+use crate::types::{ErrorResponse, SuccessResponse};
 
 #[derive(Deserialize)]
 pub struct SignMessageRequest {
@@ -17,7 +14,6 @@ pub struct SignMessageRequest {
 }
 
 pub async fn sign_message(Json(payload): Json<SignMessageRequest>) -> impl IntoResponse {
-    // Decode base58 secret key
     let secret_bytes = match bs58::decode(&payload.secret).into_vec() {
         Ok(bytes) => bytes,
         Err(_) => {
@@ -28,12 +24,12 @@ pub async fn sign_message(Json(payload): Json<SignMessageRequest>) -> impl IntoR
         }
     };
 
-    // Ensure secret key has proper length
     if secret_bytes.len() != 64 {
         return Json(ErrorResponse {
             success: false,
             error: format!("Expected 64 bytes secret key, got {}", secret_bytes.len()),
-        }).into_response();
+        })
+        .into_response();
     }
 
     let keypair = match Keypair::from_bytes(&secret_bytes) {
@@ -42,13 +38,13 @@ pub async fn sign_message(Json(payload): Json<SignMessageRequest>) -> impl IntoR
             return Json(ErrorResponse {
                 success: false,
                 error: "Failed to parse keypair from secret key".to_string(),
-            }).into_response();
+            })
+            .into_response();
         }
     };
 
     let signature = keypair.sign(payload.message.as_bytes());
     let signature_b64 = general_purpose::STANDARD.encode(signature.to_bytes());
-
 
     let response = json!({
         "signature": signature_b64,
@@ -59,7 +55,8 @@ pub async fn sign_message(Json(payload): Json<SignMessageRequest>) -> impl IntoR
     Json(SuccessResponse {
         success: true,
         data: response,
-    }).into_response()
+    })
+    .into_response()
 }
 
 #[derive(Deserialize)]
@@ -76,17 +73,19 @@ pub async fn verify_message(Json(payload): Json<VerifyMessageRequest>) -> impl I
             return Json(ErrorResponse {
                 success: false,
                 error: "Invalid base58 public key".to_string(),
-            }).into_response();
+            })
+            .into_response();
         }
     };
 
-    let signature_bytes = match base64::decode(&payload.signature) {
+    let signature_bytes = match general_purpose::STANDARD.decode(&payload.signature) {
         Ok(bytes) => bytes,
         Err(_) => {
             return Json(ErrorResponse {
                 success: false,
                 error: "Invalid base64 signature".to_string(),
-            }).into_response();
+            })
+            .into_response();
         }
     };
 
@@ -94,26 +93,29 @@ pub async fn verify_message(Json(payload): Json<VerifyMessageRequest>) -> impl I
         return Json(ErrorResponse {
             success: false,
             error: "Incorrect public key or signature length".to_string(),
-        }).into_response();
+        })
+        .into_response();
     }
 
-    let public_key = match ed25519_dalek::PublicKey::from_bytes(&pubkey_bytes) {
+    let public_key = match PublicKey::from_bytes(&pubkey_bytes) {
         Ok(pk) => pk,
         Err(_) => {
             return Json(ErrorResponse {
                 success: false,
                 error: "Failed to construct public key".to_string(),
-            }).into_response();
+            })
+            .into_response();
         }
     };
 
-    let signature = match ed25519_dalek::Signature::from_bytes(&signature_bytes) {
+    let signature = match Signature::from_bytes(&signature_bytes) {
         Ok(sig) => sig,
         Err(_) => {
             return Json(ErrorResponse {
                 success: false,
                 error: "Failed to parse signature".to_string(),
-            }).into_response();
+            })
+            .into_response();
         }
     };
 
@@ -128,5 +130,6 @@ pub async fn verify_message(Json(payload): Json<VerifyMessageRequest>) -> impl I
     Json(SuccessResponse {
         success: true,
         data: response,
-    }).into_response()
+    })
+    .into_response()
 }

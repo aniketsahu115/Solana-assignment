@@ -2,10 +2,10 @@ mod routes;
 mod types;
 mod utils;
 
-use axum::{Router, routing::post};
+use axum::{routing::post, Router};
 use routes::keypair::generate_keypair;
-use routes::token::{create_token, mint_token, send_sol, send_token};
 use routes::message::{sign_message, verify_message};
+use routes::token::{create_token, mint_token, send_sol, send_token};
 use tokio::net::TcpListener;
 
 #[tokio::main]
