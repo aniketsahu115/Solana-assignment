@@ -5,8 +5,9 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::instruction::Instruction;
 use solana_sdk::system_instruction;
 use spl_associated_token_account::get_associated_token_address;
+use base64::engine::general_purpose;
 use base64::Engine;
-use base64::engine::general_purpose::STANDARD;
+
 
 
 
@@ -63,7 +64,9 @@ pub async fn create_token(Json(payload): Json<CreateTokenRequest>) -> impl IntoR
     let response = json!({
         "program_id": instr.program_id.to_string(),
         "accounts": accounts,
-        "instruction_data": base64::encode(&instr.data),
+        "instruction_data": general_purpose::STANDARD.encode(&instr.data)
+
+,
     });
 
     Json(SuccessResponse {
@@ -124,7 +127,9 @@ pub async fn mint_token(Json(payload): Json<MintTokenRequest>) -> impl IntoRespo
     let response = json!({
         "program_id": instr.program_id.to_string(),
         "accounts": accounts,
-        "instruction_data": base64::encode(&instr.data),
+        "instruction_data": general_purpose::STANDARD.encode(&instr.data),
+
+
     });
 
     Json(SuccessResponse {
@@ -160,7 +165,9 @@ pub async fn send_sol(Json(payload): Json<SendSolRequest>) -> impl IntoResponse 
     let response = json!({
         "program_id": instr.program_id.to_string(),
         "accounts": instr.accounts.iter().map(|a| a.pubkey.to_string()).collect::<Vec<_>>(),
-        "instruction_data": base64::encode(&instr.data),
+        "instruction_data": general_purpose::STANDARD.encode(&instr.data)
+
+,
     });
 
     Json(SuccessResponse {
@@ -223,7 +230,7 @@ pub async fn send_token(Json(payload): Json<SendTokenRequest>) -> impl IntoRespo
     let response = json!({
         "program_id": instr.program_id.to_string(),
         "accounts": accounts,
-        "instruction_data": base64::encode(&instr.data),
+        "instruction_data": general_purpose::STANDARD.encode(&instr.data),
     });
 
     Json(SuccessResponse {
